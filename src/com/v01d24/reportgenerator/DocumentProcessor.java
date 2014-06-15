@@ -3,6 +3,7 @@ package com.v01d24.reportgenerator;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import org.jdom.JDOMException;
 import org.jopendocument.dom.ODSingleXMLDocument;
 import org.json.JSONObject;
 
+import com.v01d24.reportgenerator.constants.Strings;
 import com.v01d24.reportgenerator.vars.Variable;
 import com.v01d24.reportgenerator.vars.VariablesGroup;
 
@@ -49,6 +51,7 @@ public class DocumentProcessor {
 	}
 
 	public void saveToFile(File file) throws IOException {
+		ODSingleXMLDocument copy = workingDocument.clone();
 		workingDocument.saveAs(file);
 	}
 	
@@ -165,6 +168,26 @@ public class DocumentProcessor {
 		return sBuilder.toString();
 	}
 
+	public void addVariables(Element element) {
+		Matcher m = VARIABLE_PATTERN.matcher(element.getValue());
+		while (m.find()) {
+			String variableName = m.group(1);
+			Variable variable = variablesMap.get(variableName);
+			if (variable == null) {
+				String jOptionsString = m.group(2);
+				JSONObject jOptions = new JSONObject(jOptionsString);
+				String groupName = jOptions.optString("group", Strings.DEFAULT_GROUP);
+				VariablesGroup variablesGroup = (VariablesGroup) groupsMap.get(groupName);
+				if (variablesGroup == null) {
+					variablesGroup = new VariablesGroup(groupName);
+					groupsMap.put(groupName, variablesGroup);
+				}
+				variable = variablesGroup.addVariable(variableName, jOptions,  element);	
+				variablesMap.put(variableName, variable);
+			}
+		}
+	}
+	
 	//Find all variables in opened document
 	private void findVariables(Element element) {
 		String elementName = element.getName();
@@ -181,30 +204,19 @@ public class DocumentProcessor {
 			}
 		}
 	}
+
+	//Find all variables in opened document
+	private void setVariables() {
+		Collection<Variable> variables = variablesMap.values();
+		for (Variable variable: variables) {
+			String tagText = variable.holder.getText();
+			translate(tagText);
+		}
+	}
 	
 	//Get variables info
 	public Set<String> getGroupsNames() {
 		return groupsMap.keySet();
-	}
-
-	public void addVariables(Element element) {
-		Matcher m = VARIABLE_PATTERN.matcher(element.getValue());
-		while (m.find()) {
-			String variableName = m.group(1);
-			Variable variable = variablesMap.get(variableName);
-			if (variable == null) {
-				String jOptionsString = m.group(2);
-				JSONObject jOptions = new JSONObject(jOptionsString);
-				String groupName = jOptions.optString("group", "Без группы");
-				VariablesGroup variablesGroup = (VariablesGroup) groupsMap.get(groupName);
-				if (variablesGroup == null) {
-					variablesGroup = new VariablesGroup(groupName);
-					groupsMap.put(groupName, variablesGroup);
-				}
-				variable = variablesGroup.addVariable(variableName, jOptions,  element);	
-				variablesMap.put(variableName, variable);
-			}
-		}
 	}
 		
 	public VariablesGroup getGroupByName(String groupName) {
@@ -246,6 +258,6 @@ public class DocumentProcessor {
 			Variable variable = variablesMap.get(variableName);
 			variable.refreshValue();
 		}
-		
 	}
+
 }

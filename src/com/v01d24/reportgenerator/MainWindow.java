@@ -2,17 +2,20 @@ package com.v01d24.reportgenerator;
 
 import java.awt.EventQueue;
 
+import javax.swing.BoxLayout;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.ScrollPaneConstants;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.awt.Dimension;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
+import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Rectangle;
 
@@ -25,6 +28,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
+import com.v01d24.reportgenerator.constants.Strings;
 import com.v01d24.reportgenerator.constants.Style;
 import com.v01d24.reportgenerator.vars.Variable;
 import com.v01d24.reportgenerator.vars.VariablesGroup;
@@ -82,7 +86,7 @@ public class MainWindow implements ActionListener {
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
-		frame = new JFrame("Генератор отчётов");
+		frame = new JFrame(Strings.APP_LABEL);
 		frame.setBounds(100, 100, 650, 500);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		GridBagLayout gridBagLayout = new GridBagLayout();
@@ -101,20 +105,20 @@ public class MainWindow implements ActionListener {
 		gbc_toolBar.gridy = 0;
 		frame.getContentPane().add(toolBar, gbc_toolBar);
 		
-		btnOpenTemplate = new JButton("Открыть шаблон");
+		btnOpenTemplate = new JButton(Strings.ACTION_OPEN_TEMPLATE);
 		btnOpenTemplate.addActionListener(this);
 		toolBar.add(btnOpenTemplate);
 		
-		btnSaveDocument = new JButton("Сохранить отчёт");
+		btnSaveDocument = new JButton(Strings.ACTION_SAVE_REPORT);
 		btnSaveDocument.addActionListener(this);
 		toolBar.add(btnSaveDocument);
 		
-		btnRefreshPreview = new JButton("Обновить");
+		btnRefreshPreview = new JButton(Strings.ACTION_REFRESH);
 		btnRefreshPreview.addActionListener(this);
 		toolBar.add(btnRefreshPreview);
 		
 		JSplitPane splitPane = new JSplitPane();
-		splitPane.setResizeWeight(0.6);
+		splitPane.setResizeWeight(0.4);
 		GridBagConstraints gbc_splitPane = new GridBagConstraints();
 		gbc_splitPane.fill = GridBagConstraints.BOTH;
 		gbc_splitPane.gridx = 0;
@@ -134,7 +138,7 @@ public class MainWindow implements ActionListener {
 		gbl_panel.rowWeights = new double[]{0.0, 1.0};
 		previewTab.setLayout(gbl_panel);
 		
-		JLabel lblPreview = new JLabel("Просмотр");
+		JLabel lblPreview = new JLabel(Strings.LABEL_PREVIEW);
 		GridBagConstraints gbc_lblPreview = new GridBagConstraints();
 		gbc_lblPreview.insets = new Insets(0, 0, 5, 0);
 		gbc_lblPreview.gridx = 0;
@@ -162,7 +166,7 @@ public class MainWindow implements ActionListener {
 		Object source = e.getSource();
 		if (source == btnOpenTemplate) {
 			JFileChooser fc = new JFileChooser();
-			FileNameExtensionFilter filter = new FileNameExtensionFilter("Open document file", "odt");
+			FileNameExtensionFilter filter = new FileNameExtensionFilter(Strings.ACTION_OPEN_TEMPLATE, "odt");
 			fc.setFileFilter(filter);
 			int result = fc.showOpenDialog(frame.getContentPane());
 			if (result == JFileChooser.APPROVE_OPTION) {
@@ -184,7 +188,7 @@ public class MainWindow implements ActionListener {
 		}
 		else if (source == btnSaveDocument) {
 			JFileChooser fc = new JFileChooser();
-			FileNameExtensionFilter filter = new FileNameExtensionFilter("Open document file", "odt");
+			FileNameExtensionFilter filter = new FileNameExtensionFilter(Strings.ACTION_SAVE_REPORT, "odt");
 			fc.setFileFilter(filter);
 			int result = fc.showSaveDialog(frame.getContentPane());
 			if (result == JFileChooser.APPROVE_OPTION) {
@@ -209,18 +213,15 @@ public class MainWindow implements ActionListener {
     protected JComponent makeInputsPanel(VariablesGroup variablesGroup) {
 
     	JPanel groupPanel = new JPanel();
-    	groupPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 5, 5));
-    	
+    	groupPanel.setLayout(new BoxLayout(groupPanel, BoxLayout.Y_AXIS));
         List<String> variablesNames = variablesGroup.getNamesList();
-
         for (String variableName: variablesNames) {
         	Variable variable = variablesGroup.getVariableByName(variableName);
         	groupPanel.add((JComponent)variable.getWidget());
         }
-        return groupPanel;
-    	/*JScrollPane groupScrollPane = new JScrollPane(groupPanel);
+    	JScrollPane groupScrollPane = new JScrollPane(groupPanel);
     	groupScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        return groupScrollPane;*/
+        return groupScrollPane;
     }
 
 	private void initTabs() {

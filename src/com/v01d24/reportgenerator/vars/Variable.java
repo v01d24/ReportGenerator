@@ -1,6 +1,5 @@
 package com.v01d24.reportgenerator.vars;
 
-import javax.swing.JComponent;
 
 import org.jdom.Element;
 import org.json.JSONArray;
@@ -23,7 +22,7 @@ public class Variable {
 	private String label;
 	private String value;
 	private JSONObject jOptions;
-	private Element holder;
+	public final Element holder;
 	private IVariableWidget widget;
 	
 	public Variable(String variableName, JSONObject jOptions, Element holder) {
@@ -35,6 +34,7 @@ public class Variable {
 		if (type == null) {
 			System.out.println("Unsupported type: " + typeString);
 		}
+		value = jOptions.optString("default");
 		this.holder = holder;
 		System.out.println(variableName + " " + type);
 	}
