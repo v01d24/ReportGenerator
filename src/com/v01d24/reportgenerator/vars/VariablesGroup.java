@@ -22,14 +22,9 @@ public class VariablesGroup {
 		variablesMap = new HashMap<String, Variable>();
 	}
 
-	public Variable addVariable(String variableName, JSONObject jOptions, Element holder) {
-		Variable variable = (Variable) variablesMap.get(variableName);
-		if (variable == null) {
-			variablesNames.add(variableName);
-			variable = new Variable(variableName, jOptions, holder);
-			variablesMap.put(variableName, variable);
-		}
-		return variable;
+	public void addVariable(Variable variable) {
+		variablesNames.add(variable.name);
+		variablesMap.put(variable.name, variable);
 	}
 	
 	public List<String> getNamesList() {

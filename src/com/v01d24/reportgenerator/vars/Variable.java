@@ -17,11 +17,11 @@ public class Variable {
 
 	enum TYPE {STRING, TEXT, INTEGER, FLOAT, MEASURED, DATE, SELECT}
 	
-	private TYPE type;
-	private String name;
-	private String label;
+	public final TYPE type;
+	public final String name;
+	public final String label;
 	private String value;
-	private JSONObject jOptions;
+	public final JSONObject jOptions;
 	public final Element holder;
 	private IVariableWidget widget;
 	
@@ -38,15 +38,7 @@ public class Variable {
 		this.holder = holder;
 		System.out.println(variableName + " " + type);
 	}
-	
-	public String getLabel() {
-		return label;
-	}
-	
-	public TYPE getType() {
-		return type;
-	}
-	
+
 	public String getValue() {
 		return value;
 	}

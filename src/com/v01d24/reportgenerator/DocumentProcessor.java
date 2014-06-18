@@ -18,6 +18,9 @@ import org.jopendocument.dom.ODSingleXMLDocument;
 import org.json.JSONObject;
 
 import com.v01d24.reportgenerator.constants.Strings;
+import com.v01d24.reportgenerator.operation.DocumentToHtml;
+import com.v01d24.reportgenerator.operation.AbstractDocumentOperation;
+import com.v01d24.reportgenerator.operation.VariablesScanner;
 import com.v01d24.reportgenerator.vars.Variable;
 import com.v01d24.reportgenerator.vars.VariablesGroup;
 
@@ -41,7 +44,7 @@ public class DocumentProcessor {
 	//File operations
 	public void resetFile() throws JDOMException, IOException {
 		workingDocument = ODSingleXMLDocument.createFromPackage(file);
-		findVariables(workingDocument.getBody());
+		findVariables();
 
 	}
 
@@ -54,19 +57,6 @@ public class DocumentProcessor {
 		ODSingleXMLDocument copy = workingDocument.clone();
 		workingDocument.saveAs(file);
 	}
-	
-	//Dictionary operations
-	/*public void updateDictionary(String key, String Value) {
-		variablesMap.put(key, Value);
-	}
-
-	public void removeDictionaryKey(String key) {
-		variablesMap.remove(key);
-	}
-
-	public void resetDictionary() {
-		variablesMap.clear();
-	}*/
 
 	public String translate(String s) {
 		Matcher m = VARIABLE_PATTERN.matcher(s);
@@ -77,7 +67,7 @@ public class DocumentProcessor {
 			if (variable != null) {
 				String value = variable.getValue();
 				if (value == null || value.isEmpty()) {
-					value = "<font color=red>#" + variable.getLabel() + "#</font>";
+					value = "<font color=red>#" + variable.label + "#</font>";
 				}
 				else {
 					value = "<font color=blue>" + value + "</font>";
@@ -88,86 +78,41 @@ public class DocumentProcessor {
 		m.appendTail(sb);
 		return sb.toString();
 	}
-	
-	//Simple conversion to HTML
-	private void elementToHtml(Element element, StringBuilder sBuilder) {
-		String elementName = element.getName();
-		if (elementName == "h") {
-			String tag = null;
-			String outlineLevel = element.getAttributeValue("outline-level");
-			if (outlineLevel != null) {
-				tag = "h" + outlineLevel;
-			}
-			else {
-				tag = "h4";
-			}
-			sBuilder.append("<" + tag + ">");
-			sBuilder.append(translate(element.getValue()));
-			sBuilder.append("</" + tag + ">");
-		}
-		else if (elementName == "p") {
-			sBuilder.append("<p>");
-			sBuilder.append(translate(element.getValue()));
-			sBuilder.append("</p>");
-		}
-		else if (elementName == "tab") {
-			sBuilder.append("&nbsp;&nbsp;&nbsp;&nbsp;");
-		}
-		else if (elementName == "list") {
-			sBuilder.append("<ol>");
-			iterateChildsToHtml(element, sBuilder);
-			sBuilder.append("</ol>");
-		}
-		else if (elementName == "list-item") {
-			sBuilder.append("<li>");
-			iterateChildsToHtml(element, sBuilder);
-			sBuilder.append("</li>");
-		}
-		else if (elementName == "table") {
-			sBuilder.append("<table border=1 cellspacing=0>");
-			iterateChildsToHtml(element, sBuilder);
-			sBuilder.append("</table>");
-		}
-		else if (elementName == "table-row") {
-			sBuilder.append("<tr>");
-			iterateChildsToHtml(element, sBuilder);
-			sBuilder.append("</tr>");
-		}
-		else if (elementName == "table-cell") {
-			sBuilder.append("<td");
-			String colspan = element.getAttributeValue("number-columns-spanned");
-			//System.out.println("colspan " + colspan);
-			if (colspan != null) {
-				sBuilder.append(" colspan=" + colspan);
-			}
-			String rowspan = element.getAttributeValue("number-rows-spanned");
-			//System.out.println("rowspan " + rowspan);
-			if (rowspan != null) {
-				sBuilder.append(" rowspan=" + rowspan);
-			}
-			sBuilder.append(">");
-			iterateChildsToHtml(element, sBuilder);
-			sBuilder.append("</td>");
-			return;
-		}
-		else {
-			iterateChildsToHtml(element, sBuilder);
+
+	private void performOperation(Element element, AbstractDocumentOperation documentOperation) {
+		List<Element> list = (List<Element>)element.getChildren();
+		for (Element childElement: list) {
+			documentOperation.openTag(childElement);
+			performOperation(childElement, documentOperation);
+			documentOperation.closeTag(childElement);
 		}
 	}
 
-	private void iterateChildsToHtml(Element element, StringBuilder sBuilder) {
-		List<Element> list = (List<Element>)element.getChildren();
-		for (Element childElement: list) {
-			elementToHtml(childElement, sBuilder);
-		}
+	private void startOperation(AbstractDocumentOperation documentOperation) {
+		documentOperation.init();
+		performOperation(workingDocument.getBody(), documentOperation);
 	}
 
 	public String getHtml() {
-		StringBuilder sBuilder = new StringBuilder();
-		elementToHtml(workingDocument.getBody(), sBuilder);
-		return sBuilder.toString();
+		DocumentToHtml docToHtml = new DocumentToHtml(this);
+		startOperation(docToHtml);
+		return docToHtml.getHtml();
 	}
 
+/*
+	public void addVariable(String groupName, String variableName, JSONObject jOptions, Element holder) {
+		VariablesGroup variablesGroup = (VariablesGroup) groupsMap.get(groupName);
+		if (variablesGroup == null) {
+			variablesGroup = new VariablesGroup(groupName);
+			groupsMap.put(groupName, variablesGroup);
+		}
+		Variable variable = (Variable) variablesMap.get(variableName);
+		if (variable == null) {
+			variable = new Variable(variableName, jOptions, holder);
+			variablesMap.put(variableName, variable);
+		}
+	}
+*/
 	public void addVariables(Element element) {
 		Matcher m = VARIABLE_PATTERN.matcher(element.getValue());
 		while (m.find()) {
@@ -182,27 +127,17 @@ public class DocumentProcessor {
 					variablesGroup = new VariablesGroup(groupName);
 					groupsMap.put(groupName, variablesGroup);
 				}
-				variable = variablesGroup.addVariable(variableName, jOptions,  element);	
+				variable = new Variable(variableName, jOptions, element);
+				variablesGroup.addVariable(variable);	
 				variablesMap.put(variableName, variable);
 			}
 		}
 	}
 	
 	//Find all variables in opened document
-	private void findVariables(Element element) {
-		String elementName = element.getName();
-		if (elementName == "h") {
-			addVariables(element);
-		}
-		else if (elementName == "p") {
-			addVariables(element);
-		}
-		else {
-			List<Element> list = (List<Element>)element.getChildren();
-			for (Element childElement: list) {
-				findVariables(childElement);
-			}
-		}
+	private void findVariables() {
+		VariablesScanner variablesScanner = new VariablesScanner(this);
+		startOperation(variablesScanner);
 	}
 
 	//Find all variables in opened document
@@ -222,36 +157,7 @@ public class DocumentProcessor {
 	public VariablesGroup getGroupByName(String groupName) {
 		return groupsMap.get(groupName);
 	}
-	//Simple structure string
-	/*
-	private void readElement(Element element, StringBuilder sBuilder, int index) {
-		sBuilder.append(index);
-		sBuilder.append(". Name: ");
-		sBuilder.append(element.getName());
-		sBuilder.append("\nAttributes:");
-		List<Attribute> attributes = element.getAttributes();
-		for (Attribute attribute: attributes) {
-			sBuilder.append("{");
-			sBuilder.append(attribute.getName());
-			sBuilder.append(":");
-			sBuilder.append(attribute.getValue());
-			sBuilder.append("} ");
-		}
-		sBuilder.append("\n");
-		sBuilder.append(element.getValue());
-		sBuilder.append("\n\n");
-		List<Element> list = (List<Element>)element.getChildren();
-		for (Element childElement: list) {
-			readElement(childElement, sBuilder, index + 1);
-		}
-	}
 
-	public String getText() {
-		StringBuilder sBuilder = new StringBuilder();
-		readElement(workingDocument.getBody(), sBuilder, 1);
-		return sBuilder.toString();
-	}
-	*/
 	
 	public void refreshValues() {
 		for (String variableName: variablesMap.keySet()) {
